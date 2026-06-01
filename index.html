@@ -308,7 +308,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
       </button>
     </div>
 
-    <button onclick="showTracking()" style="width:100%;border:1px solid rgba(34,211,163,.3);border-radius:var(--radius);padding:12px;background:rgba(34,211,163,.06);cursor:pointer;text-align:left;font-family:'Sora',sans-serif;transition:all .15s;margin-bottom:16px;display:flex;align-items:center;gap:10px" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='rgba(34,211,163,.3)'">
+    <button id="btn-tracking" onclick="showTracking()" style="width:100%;border:1px solid rgba(34,211,163,.3);border-radius:var(--radius);padding:12px;background:rgba(34,211,163,.06);cursor:pointer;text-align:left;font-family:'Sora',sans-serif;transition:all .15s;margin-bottom:16px;display:none;align-items:center;gap:10px" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='rgba(34,211,163,.3)'">
       <div style="font-size:26px">🎯</div>
       <div>
         <div style="font-size:13px;font-weight:700;color:var(--green)">Lacak Target — Link Jebakan + Live Map</div>
@@ -912,6 +912,9 @@ function showDashboard(){
   document.getElementById('dash-sub').textContent=state.devices.length+' perangkat terdaftar';
   renderDeviceList();
   checkApiKeyOnLoad();
+  // Tampilkan/sembunyikan tombol Lacak Target berdasarkan role admin
+  const trackBtn=document.getElementById('btn-tracking');
+  if(trackBtn) trackBtn.style.display=isAdmin()?'flex':'none';
 }
 
 function renderDeviceList(){
@@ -1231,48 +1234,51 @@ async function agentIMEI(imei){
   const tac8=imei.slice(0,8);
   const tac6=imei.slice(0,6);
   const luhn=validateLuhn(imei);
-  if(!luhn) return {valid:false,brand:'—',model:'IMEI tidak valid — Luhn check gagal. Periksa kembali nomor IMEI.',os:'—',osVersion:'—',releaseYear:'—',storage:'—',network:[],country:'—',status:'Invalid',warrantyStatus:'—',color:'—',tac:tac8,snr:imei.slice(8,14),checkDigit:imei.slice(14),luhnValid:false,riskLevel:'High',_error:true,notes:'❌ IMEI tidak valid.'};
+  if(!luhn) return {valid:false,brand:'—',model:'IMEI tidak valid — Luhn check gagal.',os:'—',osVersion:'—',releaseYear:'—',storage:'—',network:[],country:'—',status:'Invalid',warrantyStatus:'—',color:'—',tac:tac8,snr:imei.slice(8,14),checkDigit:imei.slice(14),luhnValid:false,riskLevel:'High',_error:true,notes:'❌ IMEI tidak valid.'};
+
   const hint=getTACHint(imei);
-  const hintStr=hint?'\nVERIFIED DATA: Brand="'+hint.brand+'", Model="'+hint.model+'" — use as absolute ground truth, do not override.':'';
-  const sys=`You are an expert IMEI/TAC database. TAC=first 8 digits, uniquely identifies brand+model. If verified data provided, use EXACTLY. If uncertain set confident:false. NEVER guess. Respond ONLY JSON.
-TAC (Type Allocation Code) adalah 8 digit pertama IMEI yang mengidentifikasi brand dan model secara unik.
-Gunakan pengetahuanmu tentang database TAC GSMA untuk identifikasi yang tepat.
-Jangan pernah menebak — berikan data yang akurat berdasarkan TAC.
-PENTING: Jawab HANYA dengan JSON valid, tanpa teks, tanpa markdown.`;
+  const hintStr=hint?`\nVERIFIED: brand="${hint.brand}" model="${hint.model}" — WAJIB gunakan ini, jangan override.`:'';
 
-  const userMsg=`Identifikasi perangkat dari IMEI berikut secara AKURAT:
+  const sys=`Kamu adalah database TAC GSMA yang akurat. TAC 8 digit pertama IMEI = identifikasi unik brand+model.
+ATURAN WAJIB:
+- Jika ada VERIFIED data, gunakan PERSIS apa adanya
+- Jangan pernah ragu atau mengatakan "mungkin" — berikan jawaban pasti
+- Jika tidak tahu model persis, sebutkan brand yang pasti + model terduga
+- HANYA jawab dengan JSON valid, tidak ada teks lain
+${hintStr}`;
 
-IMEI: ${imei}
-TAC 8-digit: ${tac8}
-TAC 6-digit: ${tac6}
-SNR: ${imei.slice(8,14)}
-Check Digit: ${imei.slice(14)}
-Luhn Valid: ${validateLuhn(imei)}
+  const userMsg=`TAC: ${tac8} (dari IMEI: ${imei})
 
-Identifikasi brand, model SPESIFIK, OS, tahun rilis, storage, dan negara produksi berdasarkan TAC.
-Contoh: TAC 35399410 = Apple iPhone 11, TAC 86800010 = Xiaomi Redmi Note 13 Pro+.
+Database TAC referensi:
+35399410 = Apple iPhone 11 (China, iOS, 64/128/256GB)
+35177110 = Apple iPhone 15 Pro Max
+35448112 = Samsung Galaxy S24
+35386110 = Samsung Galaxy A54 5G
+86800010 = Xiaomi Redmi Note 13 Pro+
+86880012 = Xiaomi Redmi Note 12 5G
+86006807 = Realme C75
 
-Jawab HANYA JSON berikut (tanpa apapun selain JSON):
+Berikan identifikasi PASTI untuk TAC ${tac8}. Jawab JSON ini saja:
 {
   "valid": true,
-  "brand": "brand yang tepat",
-  "model": "model SPESIFIK dan LENGKAP (contoh: Apple iPhone 11, Samsung Galaxy A54 5G)",
+  "brand": "brand pasti",
+  "model": "model lengkap dan spesifik",
   "os": "Android atau iOS",
-  "osVersion": "versi OS terbaru yang didukung model ini",
+  "osVersion": "versi OS terbaru didukung",
   "releaseYear": "tahun rilis",
-  "storage": "opsi storage tersedia (contoh: 64GB/128GB/256GB)",
-  "network": ["5G","4G LTE","3G","2G"],
-  "country": "negara manufaktur (China/India/Vietnam/South Korea/USA)",
+  "storage": "opsi storage (mis: 64GB/128GB/256GB)",
+  "network": ["4G LTE","3G","2G"],
+  "country": "negara manufaktur",
   "status": "Clean",
   "warrantyStatus": "Out of Warranty",
-  "color": "pilihan warna yang tersedia",
+  "color": "warna tersedia",
   "tac": "${tac8}",
   "snr": "${imei.slice(8,14)}",
   "checkDigit": "${imei.slice(14)}",
-  "luhnValid": ${validateLuhn(imei)},
+  "luhnValid": ${luhn},
   "riskLevel": "Low",
-  "sourceNote": "Groq AI — database TAC GSMA",
-  "notes": "Spesifikasi singkat: chipset, RAM, kamera utama, baterai"
+  "sourceNote": "Groq AI — GSMA TAC database",
+  "notes": "chipset, RAM, kamera utama, baterai"
 }`;
 
   const msgs=[{role:'user',content:userMsg}];
@@ -1281,57 +1287,60 @@ Jawab HANYA JSON berikut (tanpa apapun selain JSON):
   const text=r.content.filter(c=>c.type==='text').map(c=>c.text).join('');
   if(!text) throw new Error('AI tidak memberikan respons');
   const res=extractJSON(text);
-  if(res&&res.confident===false) res._uncertain=true;
-  if(hint&&res){res.brand=hint.brand;res.model=hint.model;res._hintOverride=true;res.sourceNote='TAC database terverifikasi';res.confident=true;delete res._uncertain;}
+  // Override dengan data terverifikasi jika ada
+  if(hint&&res){
+    res.brand=hint.brand;
+    res.model=hint.model;
+    res.sourceNote='TAC database terverifikasi';
+    delete res._uncertain;
+  }
   return res;
 }
 
 async function agentPhone(phone){
-  const sys=`Kamu adalah pakar database nomor telepon internasional yang sangat akurat.
-Untuk nomor Indonesia (+62), gunakan prefix BRTI/Kominfo resmi:
-- Telkomsel: 0811-0813, 0821-0823, 0851-0853, 0852, 0853
-- Indosat Ooredoo: 0814-0816, 0855-0858
-- XL Axiata: 0817-0819, 0859, 0877-0878
-- Axis: 0831-0833, 0838
-- Tri (3): 0895-0899
-- Smartfren: 0881-0889
-PENTING: lat/lng HARUS koordinat nyata dan presisi — BUKAN 0,0.
-Jawab HANYA JSON valid, tanpa teks lain.`;
+  const sys=`Kamu adalah pakar database nomor telepon Indonesia yang sangat akurat.
+ATURAN WAJIB:
+- Prefix Telkomsel: 0811-0813, 0821-0823, 0851-0853
+- Prefix Indosat: 0814-0816, 0855-0858
+- Prefix XL: 0817-0819, 0859, 0877-0878
+- Prefix Axis: 0831-0833, 0838
+- Prefix Tri: 0895-0899
+- Prefix Smartfren: 0881-0889
+- Koordinat HARUS presisi nyata, BUKAN 0,0 atau Jakarta default
+- Lokasi estimasi = berdasarkan PREFIX nomor, BUKAN lokasi real
+- Jawab HANYA JSON valid`;
 
-  const userMsg=`Analisis nomor telepon ini secara LENGKAP dan AKURAT:
+  const userMsg=`Analisis nomor: ${phone}
 
-Nomor: ${phone}
+Prefix 0889x = Smartfren, estimasi lokasi berdasarkan sub-prefix:
+08890 → Jakarta, 08891 → Bandung, 08892 → Surabaya, 08893 → Medan,
+08894 → Makassar, 08895 → Semarang, 08896 → Yogyakarta,
+08897 → Pekanbaru (Riau), 08898 → Palembang, 08899 → Batam
 
-Identifikasi:
-1. Negara dari kode negara
-2. Operator dari prefix (untuk +62: cek 4 digit setelah +62)
-3. Kota/wilayah estimasi dari prefix
-4. Koordinat presisi pusat kota tersebut
-
-Jawab HANYA JSON berikut:
+Nomor ${phone} — identifikasi operator dan kota PASTI. Jawab JSON:
 {
   "valid": true,
   "formatted": "${phone}",
-  "countryCode": "kode negara (mis: +62)",
-  "countryName": "nama negara lengkap",
-  "countryFlag": "emoji bendera",
-  "region": "provinsi atau wilayah",
-  "city": "kota estimasi berdasarkan prefix",
-  "lat": angka_latitude_presisi,
-  "lng": angka_longitude_presisi,
-  "carrier": "nama operator RESMI dan LENGKAP",
-  "lineType": "Mobile atau Landline atau VoIP",
-  "timezone": "zona waktu (contoh: Asia/Jakarta WIB UTC+7)",
+  "countryCode": "+62",
+  "countryName": "Indonesia",
+  "countryFlag": "🇮🇩",
+  "region": "nama provinsi",
+  "city": "nama kota estimasi berdasarkan prefix",
+  "lat": angka_koordinat_presisi,
+  "lng": angka_koordinat_presisi,
+  "carrier": "nama operator resmi",
+  "lineType": "Mobile",
+  "timezone": "Asia/Jakarta (WIB UTC+7)",
   "numberType": "Personal",
   "isWhatsApp": true,
   "riskLevel": "Low",
   "riskReason": null,
   "validNote": "",
-  "notes": "Penjelasan lengkap: operator, prefix, estimasi kota dan provinsi"
+  "notes": "Operator [nama], estimasi kota [kota] berdasarkan prefix [prefix]"
 }`;
 
   const msgs=[{role:'user',content:userMsg}];
-  const r=await claudeRaw(msgs,null,sys,2000);
+  const r=await claudeRaw(msgs,null,sys,1500);
   apiMode='online'; updateAPIStatus('online');
   const text=r.content.filter(c=>c.type==='text').map(c=>c.text).join('');
   if(!text) throw new Error('AI tidak memberikan respons');
@@ -2381,30 +2390,13 @@ async function searchIMEI(){
   let result, isSimulation=false;
 
   // Cek cache localStorage dulu — hasil tidak berubah untuk IMEI sama
-  const _imeiCacheKey='mspy_imei_'+imei;
-  const _cached=localStorage.getItem(_imeiCacheKey);
-  if(_cached){
-    try{
-      result=JSON.parse(_cached);
-      clearInterval(timer);clearInterval(textTimer);
-      progressEl.style.width='100%';
-      setTimeout(()=>{
-        loadingEl.style.display='none';
-        renderIMEIResult(imei,result);
-        imeiHistory.unshift({imei,result,time:new Date().toLocaleString('id-ID')});
-        saveSearchHistory();
-        renderIMEIHistory();
-      },200);
-      return;
-    }catch(e){ localStorage.removeItem(_imeiCacheKey); }
-  }
+  // Cache IMEI hanya di memory (tidak localStorage) agar selalu ambil dari AI
 
   try{
     // Selalu pakai AI dulu — paling akurat, biarkan 5-10 detik
     result=await agentIMEI(imei);
     isSimulation=false;
-    // Simpan ke cache agar tidak berubah-ubah
-    try{ localStorage.setItem(_imeiCacheKey, JSON.stringify(result)); }catch(e){}
+    // Cache hanya di memory (_aiCache)
   }catch(agentErr){
     // Fallback: database lokal
     const _tac8=imei.slice(0,8),_tac6=imei.slice(0,6),_tac5=imei.slice(0,5);
@@ -2560,23 +2552,7 @@ async function searchPhone(){
   let result, isSimulation=false;
 
   // Cek cache localStorage — hasil tidak berubah untuk nomor sama
-  const _phoneCacheKey='mspy_phone_'+phone.replace(/\D/g,'');
-  const _phoneCached=localStorage.getItem(_phoneCacheKey);
-  if(_phoneCached){
-    try{
-      result=JSON.parse(_phoneCached);
-      clearInterval(timer);clearInterval(textTimer);
-      progressEl.style.width='100%';
-      setTimeout(()=>{
-        loadingEl.style.display='none';
-        renderPhoneResult(phone,result);
-        phoneHistory.unshift({phone,result,time:new Date().toLocaleString('id-ID')});
-        saveSearchHistory();
-        renderPhoneHistory();
-      },200);
-      return;
-    }catch(e){ localStorage.removeItem(_phoneCacheKey); }
-  }
+  // Cache phone hanya di memory (bukan localStorage) agar tidak stuck di hasil lama
 
   try{
     // Selalu pakai AI dulu untuk semua nomor — akurat, biarkan 5-10 detik
@@ -2592,8 +2568,7 @@ async function searchPhone(){
       result.region=result.region||sim.region;
     }
 
-    // Simpan ke cache
-    try{ localStorage.setItem(_phoneCacheKey, JSON.stringify(result)); }catch(e){}
+    // Cache hanya di memory (_aiCache) — tidak di localStorage
   }catch(agentErr){
     result=simPhone(rawPhone);
     isSimulation=result._sim||false;
@@ -3311,7 +3286,17 @@ window.addEventListener('appinstalled',()=>{
 let trkMap=null, trkMarker=null, trkInterval=null, trkMapInit=false;
 const TRK_KEY='mspy_trk_cfg', TRK_HIST_KEY='mspy_trk_hist';
 
+const ADMIN_EMAIL = 'irfinbaresi@gmail.com';
+
+function isAdmin(){
+  return state.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+}
+
 function showTracking(){
+  if(!isAdmin()){
+    alert('⛔ Fitur ini hanya tersedia untuk administrator.\n\nHubungi admin untuk akses.');
+    return;
+  }
   show('screen-tracking');
   trkLoadConfig();
   trkRenderHistory();
